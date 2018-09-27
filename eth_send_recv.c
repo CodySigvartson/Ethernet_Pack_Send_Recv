@@ -2,6 +2,7 @@
 Programmer	Last Modified		Description
 ---------	-------------		---------------
 Cody Sigvartson	9_20_18			Initial development
+Cody Sigvartson 9_27_18			Fixed IPv4 Packet type bug
 
 Program description:
 This program builds and sends an ethernet frames over sockets. This is a simple ethernet frame
@@ -56,13 +57,14 @@ void send_message(char if_name[], struct sockaddr_ll sk_addr, char hw_addr[], ch
 
 	// pack frame header
 	unsigned char buff[BUF_SIZ];
-	memcpy(buff, &frame, sizeof(struct ether_header));
-	// include payload
-	memcpy(&buff[sizeof(struct ether_header)-1], payload, strlen(payload)+1);
-	
+	char *eth_header = (char *)&frame;
+	strncpy(buff,eth_header,strlen(eth_header)+1);
+	strncat(&buff[14],payload,strlen(payload)+1);
+
+
 	sk_addr.sll_ifindex = if_idx.ifr_ifindex;
 	sk_addr.sll_halen = ETH_ALEN;
-	int byteSent = sendto(sockfd, buff, strlen(buff)+1, 0, (struct sockaddr*)&sk_addr, sizeof(struct sockaddr_ll));
+	int byteSent = sendto(sockfd, buff, strlen(payload)+strlen(eth_header)+1, 0, (struct sockaddr*)&sk_addr, sizeof(struct sockaddr_ll));
 	printf("%d bytes sent!\n", byteSent);
 }
 
@@ -94,7 +96,7 @@ void recv_message(char if_name[], struct sockaddr_ll sk_addr){
 	memcpy(src_mac, &buff[6], 6);
 	
 	unsigned char payload[BUF_SIZ];
-	memcpy(payload, &buff[sizeof(struct ether_header)-1], BUF_SIZ-sizeof(struct ether_header));
+	memcpy(payload, &buff[14], BUF_SIZ-sizeof(struct ether_header));
 
 	printf("Message: %s\n",payload);
 	printf("Source MAC: [%X][%X][%X][%X][%X][%X]\n",src_mac[0],src_mac[1],src_mac[2],src_mac[3],src_mac[4],src_mac[5]);
